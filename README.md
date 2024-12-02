@@ -26,6 +26,7 @@ Nav-Manage由后端API+前端扩展组成
 
 - 调整解决前端扩展因点击搜索时整体界面未铺满的问题
 - 10月7日-本地及云服务器部署文件增加导入导出浏览器格式文件，导出导航站yml文件时为浏览器书签格式html文件，带有导航站本身的一级目录标题及二级目录标题并设置输出路径下生成的文件自动3分钟删除
+- 12月1日添加Docker部署运行方式
 
 ## 安装扩展
 
@@ -62,7 +63,7 @@ Microsoft Edge：[点击安装](https://microsoftedge.microsoft.com/addons/detai
 
 <img src="https://jsd.cdn.noisework.cn/gh/rcy1314/tuchuang@main/uPic/1726090729510.png" alt="1726090729510" style="zoom:50%;" />
 
-### 环境变量说明
+### 云端环境变量说明
 
 在 Railway 或 Zeabur 上，你需要设置以下环境变量：
 
@@ -77,7 +78,66 @@ Microsoft Edge：[点击安装](https://microsoftedge.microsoft.com/addons/detai
 -  `WEBHOOK_URL` ：可选：**Webhook 通知**，可联动自动化集成推送到其它平台
 -  `STORAGE_FILE_PATH`：可选：持久化存储更新数据，用于嵌入网站等，示例·：`/data.json` 必须是完整文件路径哦！
 
-### API请求示例
+## 使用Github仓库时Docker部署说明
+
+将仓库文件下载后，首先确定哪一种方式构建运行，然后修改你的<u>环境变量</u>，修改后再往下查看
+
+### 1、使用 Docker Compose
+
+将.env.example重命名为.env 并设置好你的环境变量
+
+然后使用以下命令来启动应用：
+
+
+
+```
+docker-compose up -d
+```
+
+运行后会运行在8980端口
+
+![1733145429000](https://s2.loli.net/2024/12/02/b6tkeYpBclRLaFq.png)
+
+
+
+### 2、通过Dockerfile构建 Docker 镜像
+
+执行以下命令来构建 Docker 镜像：
+
+
+
+```
+docker build -t nav-manage-api .
+docker run -p 8980:8980 -e GITHUB_TOKEN=your-github-token \
+           -e GITHUB_REPO=username/repo \
+           -e GITHUB_BRANCH=main \
+           -e TELEGRAM_BOT_TOKEN=your-telegram-bot-token \
+           -e TELEGRAM_CHAT_ID=your-telegram-chat-id \
+           -e NAVIGATION_URL=https://your-navigation-url \
+           -e WEBHOOK_URL=https://your-webhook-url \
+           -e STORAGE_FILE_PATH=/data/data.json \
+           nav-manage-api
+
+```
+
+这里 `nav-manage-api` 是镜像的名称。构建过程会根据 Dockerfile 中的指令逐步执行，
+
+### 3. 运行 Docker 容器
+
+构建完成后，你可以通过以下命令启动一个容器：
+
+
+
+```
+docker run -d -p 8980:8980 nav-manage-api
+```
+
+- `-d` 表示在后台运行容器。
+- `-p 8980:8980` 将宿主机的 8980 端口映射到容器的 8980 端口。这样你就可以通过 `http://localhost:8980` 访问你的服务端口了。
+
+
+
+## API请求示例
 
 ### 添加数据到文件
 
