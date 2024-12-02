@@ -61,7 +61,7 @@ Microsoft Edge：[点击安装](https://microsoftedge.microsoft.com/addons/detai
 
 点击模版后输入环境变量点击部署，确保项目设置中开启网络选项，该链接为服务端地址
 
-<img src="https://jsd.cdn.noisework.cn/gh/rcy1314/tuchuang@main/uPic/1726090729510.png" alt="1726090729510" style="zoom:50%;" />
+<img src="https://s2.loli.net/2024/12/02/jsqnIoyEPx7T9Zu.png" alt="1726090729510" />
 
 ### 云端环境变量说明
 
@@ -122,7 +122,7 @@ docker run -p 8980:8980 -e GITHUB_TOKEN=your-github-token \
 
 这里 `nav-manage-api` 是镜像的名称。构建过程会根据 Dockerfile 中的指令逐步执行，
 
-### 3. 运行 Docker 容器
+### 运行 Docker 容器
 
 构建完成后，你可以通过以下命令启动一个容器：
 
