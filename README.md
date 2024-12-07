@@ -12,6 +12,8 @@ Nav-Manage由后端API+前端扩展组成
 
 数据格式遵循主题下的标准格式
 
+**！！！！**请确保你的yml文件第一行是`---`
+
 这是为静态导航而开发的功能增强为主的扩展，开源仓库为后端，前端请安装扩展使用！
 
 后端支持一键部署到 Railway和Zeabur
@@ -27,6 +29,10 @@ Nav-Manage由后端API+前端扩展组成
 - 调整解决前端扩展因点击搜索时整体界面未铺满的问题
 - 10月7日-本地及云服务器部署文件增加导入导出浏览器格式文件，导出导航站yml文件时为浏览器书签格式html文件，带有导航站本身的一级目录标题及二级目录标题并设置输出路径下生成的文件自动3分钟删除
 - 12月1日添加Docker部署运行方式
+- 12月7日增加github环境下可生成rss文件及导出为浏览器格式书签文件，请自行修改变量，否则会有默认变量输出
+- **书签文件下载的路由**：
+  - 新增了 `/api/export-bookmarks` 路由，生成书签文件并允许用户下载。
+  - 使用 `generateBookmarksHtml` 函数生成书签 HTML，并使用环境变量 `BOOKMARKS_TITLE` 和 `BOOKMARKS_H1` 配置标题和 H1。
 
 ## 安装扩展
 
@@ -77,6 +83,11 @@ Microsoft Edge：[点击安装](https://microsoftedge.microsoft.com/addons/detai
 - **`NAVIGATION_URL`**：**可选**：指定导航站的 URL，用于在 Telegram 消息中提供链接。
 -  `WEBHOOK_URL` ：可选：**Webhook 通知**，可联动自动化集成推送到其它平台
 -  `STORAGE_FILE_PATH`：可选：持久化存储更新数据，用于嵌入网站等，示例·：`/data.json` 必须是完整文件路径哦！
+-  `BOOKMARKS_TITLE` ：可选：此为导出浏览器书签文件时书签的文件meta 标题默认为：Noise导航-Bookmarks
+-   `BOOKMARKS_H1`：可选：此为导出浏览器书签文件时书签的h1标题，默认：Noise导航-Bookmarks
+-  `RSS_TITLE`：可选：变量为生成的rss文件标题，默认：NOISE导航收录更新
+-  `RSS_LINK`：可选：变量为生成的rss文件中的站点链接，默认：http://www.noisedh.cn
+-  `RSS_DESCRIPTION`：可选：变量为生成的rss文件中的描述信息，默认：最新更新通知
 
 ## 使用Github仓库时Docker部署说明
 
@@ -116,6 +127,11 @@ docker run -p 8980:8980 -e GITHUB_TOKEN=your-github-token \
            -e NAVIGATION_URL=https://your-navigation-url \
            -e WEBHOOK_URL=https://your-webhook-url \
            -e STORAGE_FILE_PATH=/data/data.json \
+           -e BOOKMARKS_TITLE=BOOKMARKS_TITLE \
+           -e BOOKMARKS_H1=BOOKMARKS_H1 \
+           -e RSS_TITLE=RSS_TITLE \
+           -e RSS_LINK=RSS_LINK \
+           -e RSS_DESCRIPTION=RSS_DESCRIPTION \
            nav-manage-api
 
 ```
@@ -271,6 +287,20 @@ fetch('http://你部署的域名/api/files?filePath=path/to/file.yaml')
     .catch(error => console.error('获取文件时出错:', error));
 ```
 
+### 获取书签文件
+
+```
+curl -O "http://localhost:8980/api/export-bookmarks"
+```
+
+你还可以直接在浏览器中访问运行的端口地址 来下载书签文件：
+
+
+
+```
+http://localhost:8980/api/export-bookmarks
+```
+
 ### 删除文件
 
 ```javascript
@@ -313,6 +343,7 @@ TG通知预览
 7. 获取更新数据：`GET /api/notifications` - 获取最新更新站点的数据。
 8. **Webhook 通知**：通过环境变量 `WEBHOOK_URL` 发送 Webhook 通知。可选设置
 9. **持久化存储**：通过 `STORAGE_FILE_PATH` 环境变量指定仓库路径json文件来存储更新数据，已设置限制为最大存储40条
+10. 生成RSS文件：和json文件路径一致，可配置rss文件的标题等信息，同时带有收录更新时间（上海时区）
 
 ### 注意事项
 
@@ -358,7 +389,7 @@ npm install express js-yaml cors axios
 
 没有GitHub api限制，可以随时添加修改，当然放本地效果也是一样
 
-![1727601511008](https://s2.loli.net/2024/09/29/L9oD2bX6NpSAGFO.png)
+![1727601511008](https://s2.loli.net/2024/12/02/dFT9BWRpa2h7vgy.png)
 
 ## 一键部署导航站
 

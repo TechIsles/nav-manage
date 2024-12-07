@@ -16,6 +16,9 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const NAVIGATION_URL = process.env.NAVIGATION_URL;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const STORAGE_FILE_PATH = process.env.STORAGE_FILE_PATH;
+const RSS_FILE_PATH = process.env.RSS_FILE_PATH || '/themes/WebStack-Hugo/static/rss.xml';
+const BOOKMARKS_OUTPUT_DIR = process.env.BOOKMARKS_OUTPUT_DIR || '/themes/WebStack-Hugo/static/bookmarks/';
+const BOOKMARKS_FILE_NAME = 'bookmarks.html';
 
 if (!GITHUB_TOKEN || !GITHUB_REPO) {
     console.error('请设置 GITHUB_TOKEN 和 GITHUB_REPO 环境变量。');
@@ -110,15 +113,88 @@ const sendWebhookNotification = async (notification) => {
     }
 };
 
+const escapeXML = (str) => {
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+};
+
+const generateRSS = (notifications) => {
+    const rssItems = notifications.map(notification => `
+        <item>
+            <title>${escapeXML(notification.title || '')}</title>
+            <link>${escapeXML(notification.url || '')}</link>
+            <description>${escapeXML(notification.description || '')}</description>
+            <guid>${escapeXML(notification.url || '')}</guid>
+            <pubDate>${new Date(notification.date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</pubDate>
+        </item>
+    `).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+    <title>${escapeXML(process.env.RSS_TITLE || 'NOISE导航收录更新')}</title>
+    <link>${escapeXML(process.env.RSS_LINK || 'http://www.noisedh.cn')}</link>
+    <description>${escapeXML(process.env.RSS_DESCRIPTION || '最新更新通知')}</description>
+    ${rssItems}
+</channel>
+</rss>`;
+};
+
 const saveNotifications = () => {
     if (!STORAGE_FILE_PATH) return;
 
     try {
+        // 确保目录存在
+        if (!fs.existsSync(path.dirname(STORAGE_FILE_PATH))) {
+            fs.mkdirSync(path.dirname(STORAGE_FILE_PATH), { recursive: true });
+        }
+
         const dataToSave = JSON.stringify(updateNotifications.slice(0, 40), null, 2);
         fs.writeFileSync(STORAGE_FILE_PATH, dataToSave);
+
+        // 生成 RSS 文件
+        const rssContent = generateRSS(updateNotifications);
+        if (!fs.existsSync(path.dirname(RSS_FILE_PATH))) {
+            fs.mkdirSync(path.dirname(RSS_FILE_PATH), { recursive: true });
+        }
+        fs.writeFileSync(RSS_FILE_PATH, rssContent, 'utf8');
     } catch (err) {
         console.error('保存通知数据时出错:', err);
     }
+};
+
+// 生成书签 HTML
+const generateBookmarksHtml = (bookmarks, title = 'Noise导航-Bookmarks', h1 = 'Noise导航-Bookmarks') => {
+    let bookmarkHtml = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n';
+    bookmarkHtml += '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n';
+    bookmarkHtml += `<TITLE>${title}</TITLE>\n<H1>${h1}</H1>\n<DL><p>\n`;
+
+    bookmarks.forEach(bookmark => {
+        if (bookmark.isHeader) {
+            bookmarkHtml += `    <DT><H3 ADD_DATE="${Date.now()}">${bookmark.title}</H3>\n`;
+        } else {
+            bookmarkHtml += `    <DT><A HREF="${bookmark.url}">${bookmark.title}</A>\n`;
+        }
+    });
+
+    bookmarkHtml += '</DL><p>';
+    return bookmarkHtml;
+};
+
+// 确保目录存在
+const ensureDirectoryExists = (dirPath) => {
+    return new Promise((resolve, reject) => {
+        fs.mkdir(dirPath, { recursive: true }, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
 };
 
 app.get('/data', async (req, res) => {
@@ -219,6 +295,7 @@ app.post('/api/yaml', async (req, res) => {
             logo: newDataEntry.logo,
             url: newDataEntry.url,
             description: newDataEntry.description,
+            date: new Date().toISOString()
         };
 
         updateNotifications.unshift(notification);
@@ -411,6 +488,84 @@ app.put('/api/update', async (req, res) => {
     }
 });
 
+app.get('/api/export-bookmarks', async (req, res) => {
+    const bookmarks = [];
+
+    // 确保输出目录存在
+    const outputPath = path.resolve(BOOKMARKS_OUTPUT_DIR);
+    await ensureDirectoryExists(outputPath);
+
+    const dataDir = path.resolve(DATA_DIR);
+
+    try {
+        const yamlFiles = await fs.promises.readdir(dataDir);
+
+        for (const file of yamlFiles) {
+            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+                const filePath = path.join(dataDir, file);
+                const yamlContent = await fs.promises.readFile(filePath, 'utf8');
+                const yamlData = yaml.load(yamlContent);
+
+                yamlData.forEach(category => {
+                    // 添加一级标题
+                    const taxonomyTitle = category.taxonomy; // 假设 taxonomy 在 category 中
+                    if (taxonomyTitle) {
+                        bookmarks.push({ title: taxonomyTitle, url: '', isHeader: true });
+                    }
+
+                    if (Array.isArray(category.links)) {
+                        category.links.forEach(link => {
+                            bookmarks.push({ title: link.title, url: link.url });
+                        });
+                    }
+
+                    if (Array.isArray(category.list)) {
+                        category.list.forEach(subCategory => {
+                            // 添加二级标题
+                            const termTitle = subCategory.term; // 假设 term 在 subCategory 中
+                            if (termTitle) {
+                                bookmarks.push({ title: termTitle, url: '', isHeader: true });
+                            }
+
+                            if (Array.isArray(subCategory.links)) {
+                                subCategory.links.forEach(link => {
+                                    bookmarks.push({ title: link.title, url: link.url });
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        const bookmarkHtml = generateBookmarksHtml(bookmarks, process.env.BOOKMARKS_TITLE, process.env.BOOKMARKS_H1);
+
+        // 写入书签文件，每次都覆盖上一个文件
+        const fullOutputPath = path.join(outputPath, BOOKMARKS_FILE_NAME);
+        await fs.promises.writeFile(fullOutputPath, bookmarkHtml, 'utf8');
+
+        // 直接下载生成的书签文件
+        res.download(fullOutputPath, BOOKMARKS_FILE_NAME, (err) => {
+            if (err) {
+                console.error('Error downloading file:', err);
+                res.status(500).send('文件下载失败');
+            }
+        });
+    } catch (err) {
+        console.error('生成书签文件时出错:', err);
+        return res.status(500).send('生成书签文件失败');
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`服务器正在运行在 http://localhost:${PORT}`);
+    console.log('可用的路由:');
+    console.log('GET /api/export-bookmarks');
+    console.log('GET /data');
+    console.log('GET /data/:filename');
+    console.log('GET /api/notifications');
+    console.log('POST /api/yaml');
+    console.log('GET /api/search');
+    console.log('DELETE /api/delete');
+    console.log('PUT /api/update');
 });
