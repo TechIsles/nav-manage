@@ -17,7 +17,7 @@ const NAVIGATION_URL = process.env.NAVIGATION_URL;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const STORAGE_FILE_PATH = process.env.STORAGE_FILE_PATH;
 const RSS_FILE_PATH = process.env.RSS_FILE_PATH || '/themes/WebStack-Hugo/static/rss.xml';
-const BOOKMARKS_OUTPUT_DIR = process.env.BOOKMARKS_OUTPUT_DIR || '/themes/WebStack-Hugo/static/bookmarks/';
+const BOOKMARKS_OUTPUT_DIR = process.env.BOOKMARKS_OUTPUT_DIR || '/themes/WebStack-Hugo/static/';
 const BOOKMARKS_FILE_NAME = 'bookmarks.html';
 
 if (!GITHUB_TOKEN || !GITHUB_REPO) {
@@ -221,7 +221,11 @@ app.get('/data/:filename', async (req, res) => {
     const fileUrl = getGitHubFileUrl(filename);
 
     try {
-        const response = await axios.get(fileUrl);
+        const response = await axios.get(fileUrl, {
+            headers: {
+                Authorization: `token ${GITHUB_TOKEN}`
+            }
+        });
         res.send(response.data);
     } catch (err) {
         console.error('读取文件时出错:', err.response ? err.response.data : err);
