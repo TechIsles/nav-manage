@@ -493,13 +493,17 @@ app.put('/api/update', async (req, res) => {
 });
 
 app.get('/api/export-bookmarks', async (req, res) => {
+    console.log('Received request for export-bookmarks:', req.query);
+    const { outputDir } = req.query; // 从查询参数获取输出目录
     const bookmarks = [];
 
-    // 确保输出目录存在
-    const outputPath = path.resolve(BOOKMARKS_OUTPUT_DIR);
-    await ensureDirectoryExists(outputPath);
+    // 确保数据目录存在
+    const dataDir = path.resolve(process.cwd(), DATA_DIR);
+    await ensureDirectoryExists(dataDir);
 
-    const dataDir = path.resolve(DATA_DIR);
+    // 确保输出目录存在
+    const outputPath = outputDir ? path.resolve(process.cwd(), outputDir) : path.resolve(BOOKMARKS_OUTPUT_DIR);
+    await ensureDirectoryExists(outputPath);
 
     try {
         const yamlFiles = await fs.promises.readdir(dataDir);
@@ -542,14 +546,15 @@ app.get('/api/export-bookmarks', async (req, res) => {
             }
         }
 
-        const bookmarkHtml = generateBookmarksHtml(bookmarks, process.env.BOOKMARKS_TITLE, process.env.BOOKMARKS_H1);
+        const bookmarkHtml = generateBookmarksHtml(bookmarks, process.env.BOOKMARKS_TITLE || 'Bookmarks', process.env.BOOKMARKS_H1 || 'Bookmarks');
 
-        // 写入书签文件，每次都覆盖上一个文件
-        const fullOutputPath = path.join(outputPath, BOOKMARKS_FILE_NAME);
+        // 写入书签文件
+        const outputFilename = `bookmarks_${Date.now()}.html`;
+        const fullOutputPath = path.join(outputPath, outputFilename);
         await fs.promises.writeFile(fullOutputPath, bookmarkHtml, 'utf8');
 
         // 直接下载生成的书签文件
-        res.download(fullOutputPath, BOOKMARKS_FILE_NAME, (err) => {
+        res.download(fullOutputPath, outputFilename, (err) => {
             if (err) {
                 console.error('Error downloading file:', err);
                 res.status(500).send('文件下载失败');
@@ -557,9 +562,10 @@ app.get('/api/export-bookmarks', async (req, res) => {
         });
     } catch (err) {
         console.error('生成书签文件时出错:', err);
-        return res.status(500).send('生成书签文件失败');
+        res.status(500).send('生成书签文件失败');
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`服务器正在运行在 http://localhost:${PORT}`);
