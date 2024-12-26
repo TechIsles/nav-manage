@@ -492,17 +492,15 @@ app.put('/api/update', async (req, res) => {
     }
 });
 
+// 导出为书签格式的路由
 app.get('/api/export-bookmarks', async (req, res) => {
     console.log('Received request for export-bookmarks:', req.query);
     const { outputDir } = req.query; // 从查询参数获取输出目录
+    const dataDir = path.resolve(process.cwd(), DATA_DIR);
     const bookmarks = [];
 
-    // 确保数据目录存在
-    const dataDir = path.resolve(process.cwd(), DATA_DIR);
-    await ensureDirectoryExists(dataDir);
-
     // 确保输出目录存在
-    const outputPath = outputDir ? path.resolve(process.cwd(), outputDir) : path.resolve(BOOKMARKS_OUTPUT_DIR);
+    const outputPath = path.resolve(process.cwd(), outputDir || BOOKMARKS_OUTPUT_DIR);
     await ensureDirectoryExists(outputPath);
 
     try {
@@ -546,7 +544,22 @@ app.get('/api/export-bookmarks', async (req, res) => {
             }
         }
 
-        const bookmarkHtml = generateBookmarksHtml(bookmarks, process.env.BOOKMARKS_TITLE || 'Bookmarks', process.env.BOOKMARKS_H1 || 'Bookmarks');
+        // 生成书签 HTML
+        let bookmarkHtml = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n';
+        bookmarkHtml += '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n';
+        bookmarkHtml += `<TITLE>${BOOKMARKS_TITLE}</TITLE>\n`;
+        bookmarkHtml += `<H1>${BOOKMARKS_H1}</H1>\n`;
+        bookmarkHtml += '<DL><p>\n';
+
+        bookmarks.forEach(bookmark => {
+            if (bookmark.isHeader) {
+                bookmarkHtml += `    <DT><H3 ADD_DATE="${Date.now()}">${bookmark.title}</H3>\n`;
+            } else {
+                bookmarkHtml += `    <DT><A HREF="${bookmark.url}">${bookmark.title}</A>\n`;
+            }
+        });
+
+        bookmarkHtml += '</DL><p>';
 
         // 写入书签文件
         const outputFilename = `bookmarks_${Date.now()}.html`;
@@ -558,6 +571,8 @@ app.get('/api/export-bookmarks', async (req, res) => {
             if (err) {
                 console.error('Error downloading file:', err);
                 res.status(500).send('文件下载失败');
+            } else {
+                console.log(`书签文件下载成功: ${outputFilename}`);
             }
         });
     } catch (err) {
@@ -565,8 +580,6 @@ app.get('/api/export-bookmarks', async (req, res) => {
         res.status(500).send('生成书签文件失败');
     }
 });
-
-
 app.listen(PORT, () => {
     console.log(`服务器正在运行在 http://localhost:${PORT}`);
     console.log('可用的路由:');
