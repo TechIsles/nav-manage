@@ -8,7 +8,9 @@
 
 Nav-Manage由后端API+前端扩展组成
 
-服务基础为[WebStack 网址导航 Hugo 主题](https://github.com/shenweiyan/WebStack-Hugo)
+为noisedh-nav导航主题专用扩展
+
+【待更新补充...】
 
 数据格式遵循主题下的标准格式
 
