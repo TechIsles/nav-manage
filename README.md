@@ -4,6 +4,8 @@
 
 ![](https://jsd.cdn.noisework.cn/gh/rcy1314/tuchuang@main/uPic/1726070023506.png)
 
+## 新版本待更新，旧版兼容请查阅下方
+
 ## 说明
 
 Nav-Manage由后端API+前端扩展组成
